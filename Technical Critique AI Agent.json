@@ -28,7 +28,7 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        224,
+        448,
         112
       ]
     },
@@ -57,6 +57,33 @@
           "__aiGatewayManaged": true
         }
       }
+    },
+    {
+      "parameters": {
+        "url": "https://api.github.com/search/repositories",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "== {{ $json.chatInput }}"
+            },
+            {
+              "name": "sort",
+              "value": "stars"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        112
+      ],
+      "id": "de60ff53-201e-4c2a-9ac9-f154901746cf",
+      "name": "HTTP Request"
     }
   ],
   "pinData": {},
@@ -65,7 +92,7 @@
       "main": [
         [
           {
-            "node": "Technical Critique Agent",
+            "node": "HTTP Request",
             "type": "main",
             "index": 0
           }
@@ -82,6 +109,17 @@
           }
         ]
       ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Technical Critique Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": true,
@@ -89,7 +127,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "669cb528-6f1d-4c4c-9e7b-1b8ffbe3a641",
+  "versionId": "921c2530-59ba-4dfb-82ef-d37c43de2b2a",
   "meta": {
     "instanceId": "81968c00463cafe317356a3603d800516d0297f470150838a65ba5baf573a55e"
   },
