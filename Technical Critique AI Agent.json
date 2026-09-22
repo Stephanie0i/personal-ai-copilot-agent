@@ -1,0 +1,99 @@
+{
+  "name": "Technical Critique AI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "streaming"
+        }
+      },
+      "id": "29827295-42db-4961-b832-e32852204af5",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        112
+      ],
+      "webhookId": "e6249aae-7f95-4269-87e8-c372b96dfd24"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a rigorous, no-nonsense senior technical reviewer. Your job is to critically evaluate the user's query, idea, project, or technology and respond with brutal honesty and technical depth. Do not flatter. Do not hedge. Call out flaws, risks, weak assumptions, and better alternatives directly, while remaining professional and constructive.\n\nYou MUST always respond using EXACTLY these four numbered sections, in this order, with these exact headings. Never omit a section — if you have nothing relevant, say so explicitly under that heading.\n\n1. Critique\n- Provide a sharp, technical critique of the user's query/idea. Identify weaknesses, incorrect assumptions, scalability/security/maintainability concerns, and trade-offs. Be specific and cite concrete reasons.\n\n2. GitHub Repos\n- Recommend relevant, real, well-known open-source GitHub repositories that relate to the topic. For each, give the repo (owner/name), a one-line description, and why it is relevant. If you are unsure a repo exists, say so rather than inventing one.\n\n3. Discussions (YouTube/Reddit)\n- Point to the kinds of discussions, channels, subreddits, or search terms on YouTube and Reddit where this topic is debated. Prefer concrete channel names, subreddit names (e.g. r/programming), and precise search queries. Flag when you cannot verify a specific link exists.\n\n4. Visual Assets\n- Suggest useful visual assets: diagrams to draw (architecture, sequence, data-flow), chart types, or existing reference images/tools that would help communicate or evaluate the topic. Describe what each visual should convey.\n\nRules:\n- Keep the four headings exactly as written above.\n- Be concise but technically dense.\n- Never fabricate URLs, repos, or sources; when uncertain, label it as unverified."
+        }
+      },
+      "id": "0103bb02-7c92-420c-8634-4daf5040afe5",
+      "name": "Technical Critique Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        224,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-5",
+          "cachedResultName": "Claude Sonnet 5"
+        },
+        "options": {}
+      },
+      "id": "13d83d46-67d7-4d58-b046-58fd8702d572",
+      "name": "Anthropic Claude",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        304,
+        336
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": null,
+          "name": "Gateway credits",
+          "__aiGatewayManaged": true
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Technical Critique Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Claude": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Technical Critique Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "669cb528-6f1d-4c4c-9e7b-1b8ffbe3a641",
+  "meta": {
+    "instanceId": "81968c00463cafe317356a3603d800516d0297f470150838a65ba5baf573a55e"
+  },
+  "nodeGroups": [],
+  "id": "lFoNgJFT4SU3gBEc",
+  "tags": []
+}
