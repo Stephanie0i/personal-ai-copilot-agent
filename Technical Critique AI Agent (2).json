@@ -1,0 +1,287 @@
+{
+  "name": "Technical Critique AI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {
+          "responseMode": "lastNode"
+        }
+      },
+      "id": "29827295-42db-4961-b832-e32852204af5",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        112
+      ],
+      "webhookId": "e6249aae-7f95-4269-87e8-c372b96dfd24"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const stop = new Set(['is','a','an','the','for','to','of','and','or','in','on','good','choice','should','i','my','with','building','build','are','be','it','this','that','how','do','does','can','use','using','best','vs','when','what','why','which','better','worth','as']);\nconst q = String($json.chatInput || '');\nconst keywords = q.toLowerCase().replace(/[^a-z0-9\\s.+#-]/g, ' ').split(/\\s+/).filter(w => w.length > 1 && !stop.has(w)).slice(0, 6).join(' ');\nreturn { chatInput: q, keywords: keywords || q };"
+      },
+      "id": "b580c836-9f1f-4c44-866a-7f976de651ea",
+      "name": "Extract Search Keywords",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.github.com/search/repositories",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "q",
+              "value": "={{ $('Extract Search Keywords').item.json.keywords }}"
+            },
+            {
+              "name": "sort",
+              "value": "stars"
+            },
+            {
+              "name": "order",
+              "value": "desc"
+            },
+            {
+              "name": "per_page",
+              "value": "5"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            },
+            {
+              "name": "User-Agent",
+              "value": "n8n-technical-critique-agent"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "de60ff53-201e-4c2a-9ac9-f154901746cf",
+      "name": "HTTP Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        224,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://hn.algolia.com/api/v1/search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{ $('Extract Search Keywords').item.json.keywords }}"
+            },
+            {
+              "name": "tags",
+              "value": "story"
+            },
+            {
+              "name": "hitsPerPage",
+              "value": "5"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "35e46973-be32-470e-8545-0c59b3c24dae",
+      "name": "HTTP Request1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        448,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Critique the following user query. Base sections 2 and 3 strictly on the fetched JSON data included below.\n\nUSER QUERY:\n{{ $('When chat message received').item.json.chatInput }}\n\n--- FETCHED GITHUB REPOSITORIES (JSON) ---\n{{ JSON.stringify(($('HTTP Request').item.json.items || []).map(r => ({ full_name: r.full_name, url: r.html_url, stars: r.stargazers_count, language: r.language, description: r.description }))) }}\n\n--- FETCHED HACKER NEWS DISCUSSIONS (JSON) ---\n{{ JSON.stringify(($('HTTP Request1').item.json.hits || []).map(h => ({ title: h.title, url: h.url, points: h.points, comments: h.num_comments, id: h.objectID }))) }}\n\n--- FETCHED VISUAL ASSETS (IMAGES / WALLPAPERS) ---\n{{ JSON.stringify(($('HTTP Request2').item.json.results || []).map(img => ({ description: img.alt_description, url: img.urls.regular, download_link: img.links.html, photographer: img.user.name }))) }}",
+        "options": {
+          "systemMessage": "You are a rigorous, no-nonsense senior technical reviewer. Your job is to critically evaluate the user's query, idea, project, or technology and respond with brutal honesty and technical depth. Do not flatter. Do not hedge. Call out flaws, risks, weak assumptions, and better alternatives directly, while remaining professional and constructive.\n\nYou MUST always respond using EXACTLY these four numbered sections, in this order, with these exact headings. Never omit a section — if you have nothing relevant, say so explicitly under that heading.\n\n1. Critique\n- Provide a sharp, technical critique of the user's query/idea. Identify weaknesses, incorrect assumptions, scalability/security/maintainability concerns, and trade-offs. Be specific and cite concrete reasons.\n\n2. GitHub Repos\n- Use ONLY the repositories in the \"FETCHED GITHUB REPOSITORIES\" JSON in the user message. For each, list: full name (owner/name), its URL, star count, primary language, and a one-line reason it is relevant to the critique. Do NOT invent repositories or add any not present in that JSON. If the JSON array is empty, say so explicitly.\n\n3. Discussions (Hacker News)\n- Use ONLY the threads in the \"FETCHED HACKER NEWS DISCUSSIONS\" JSON in the user message. For each, list: the title, its URL (or https://news.ycombinator.com/item?id=<id> when no external URL is present), points, and comment count, plus a one-line note on what it covers. Do NOT invent discussions. If the JSON array is empty, say so explicitly.\n\n4. Visual Assets\n- Suggest useful visual assets: diagrams to draw (architecture, sequence, data-flow), chart types, or existing reference images/tools that would help communicate or evaluate the topic. Describe what each visual should convey.\n\nRules:\n- Keep the four headings exactly as written above.\n- Be concise but technically dense.\n- Never fabricate URLs, repos, or sources; when uncertain, label it as unverified."
+        }
+      },
+      "id": "0103bb02-7c92-420c-8634-4daf5040afe5",
+      "name": "Technical Critique Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        896,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "claude-sonnet-5",
+          "cachedResultName": "Claude Sonnet 5"
+        },
+        "options": {
+          "streaming": true
+        }
+      },
+      "id": "13d83d46-67d7-4d58-b046-58fd8702d572",
+      "name": "Anthropic Claude",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.6,
+      "position": [
+        304,
+        336
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": null,
+          "name": "Gateway credits",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.unsplash.com/search/photos",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "== {{ $json.chatInput }}"
+            },
+            {
+              "name": "per_page",
+              "value": "3"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Client-ID J5-hQRVO7wW52y8ESZYjfT-A-A_KfF9oX0EZycqKYzI"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        672,
+        112
+      ],
+      "id": "f4912718-020d-4fd3-baf2-4c9b4ebb11ff",
+      "name": "HTTP Request2"
+    }
+  ],
+  "pinData": {
+    "Technical Critique Agent": [
+      {
+        "json": {
+          "output": "1. Critique\n- The question is under-specified and effectively unanswerable as posed. \"High-performance web backend\" needs concrete definition: target throughput (req/s), p99 latency budget, concurrency model (I/O-bound vs CPU-bound), team Rust proficiency, time-to-market constraints, and whether \"performance\" is the actual bottleneck (often it's DB queries, network, or serialization, not language choice).\n- Implicit assumption that raw language performance is the dominant factor is usually wrong for typical CRUD/web-API workloads — most latency comes from I/O (DB round-trips, downstream calls), where Go, Java (with virtual threads), or even Node.js are frequently \"fast enough,\" and Rust's edge shows up mainly in CPU-bound, high-QPS, or resource-constrained scenarios (edge computing, embedded proxies, high-frequency trading gateways).\n- Cost side ignored: Rust has a steep learning curve (ownership, lifetimes, async trait complexity, Send/Sync bounds with Tokio), slower iteration speed, longer compile times, and a smaller pool of experienced engineers versus Go/Java/Node. For most teams, this raises total cost of ownership even if runtime performance improves.\n- Ecosystem maturity concern: async Rust web frameworks (Axum, Actix-web, Rocket) are solid, but the surrounding ecosystem (ORMs, observability integrations, admin tooling, enterprise auth libraries) lags far behind Java/Spring or Node/Express in breadth and battle-testing. Fragmentation between async runtimes (Tokio vs async-std) and framework choices adds decision overhead.\n- The fetched GitHub repos actually reinforce this concern rather than answer the question: most are low-star, early-stage, or hobby-grade (10–569 stars), none are widely-adopted production frameworks (e.g., no Actix-web, Axum, or Tower core repos surfaced), which is a weak evidentiary base for \"Rust is good/bad\" — it's a sampling/search artifact, not a maturity signal.\n- No mention of alternatives in the query: Go (simpler concurrency model, faster compile, comparable I/O performance, mature stdlib for web), or Java with Project Loom, deserve direct comparison before concluding Rust is the right pick.\n- Missing operational concerns: Rust's panic/unsafe boundaries, unwrap-related crash risk in production if error handling isn't disciplined, and harder debugging (async stack traces, compiler error verbosity for lifetime issues) versus GC'd languages.\n\n2. GitHub Repos\n- kitojs/kito — https://github.com/kitojs/kito — 569 stars — TypeScript — TS framework with a Rust core; relevant only as a hybrid example, not evidence of pure-Rust backend viability.\n- Tuntii/RustAPI — https://github.com/Tuntii/RustAPI — 62 stars — Rust — Small, low-adoption Rust web framework; illustrates ecosystem fragmentation rather than a mature production choice.\n- Syqlorix/Syqlorix — https://github.com/Syqlorix/Syqlorix — 19 stars — Python — Python-first framework with Rust core; shows Rust used for performance-critical layers under a friendlier language, not as the primary backend language.\n- dzikrisyairozi/monorepo-fullstack-starter — https://github.com/dzikrisyairozi/monorepo-fullstack-starter — 13 stars — TypeScript — Uses Axum for the Rust backend in a starter template; useful as a reference architecture example but unproven at scale (13 stars, likely unmaintained/untested in production).\n- Alexeyca/Simple-Rust-Backend — https://github.com/Alexeyca/Simple-Rust-Backend — 10 stars — Rust — Generic \"hello world\"-tier backend; provides no real signal on production performance or scalability.\n\nOverall: none of these repos are widely-adopted, production-grade validation of Rust for high-performance backends (e.g., no Axum/Actix-web core repos, no large-scale case studies). The dataset is too thin and low-star to support a confident recommendation either way — treat as anecdotal only.\n\n3. Discussions (Hacker News)\n- \"Is Java Dying?\" — https://news.ycombinator.com/item?id=32287368 — 17 points, 15 comments — Tangential language-comparison discussion; not focused on Rust or backend performance specifically, weak relevance.\n- \"Show HN: DotLottie Player – A New Universal Lottie Player Built with Rust\" — https://github.com/LottieFiles/dotlottie-rs — 65 points, 13 comments — Rust used for a rendering library, not a web backend; illustrates Rust's performance benefits in a different domain (client-side/animation), only loosely applicable.\n- \"A complete microservice backed by MySQL, written in Rust and compiled into WASM\" — https://news.ycombinator.com/item?id=33329141 — 10 points, 2 comments — Directly relevant: Rust microservice + DB backend example, but very low engagement (2 comments) limits how much community validation it provides.\n- \"Why API performance equals to 50% user experience?\" — https://news.ycombinator.com/item?id=37846652 — 2 points, 3 comments — Relevant to the \"performance matters\" premise but extremely low engagement/signal; can't be treated as authoritative.\n- \"Show HN: InstinctFlash – High-Performance Serving Runtime for Robotics Models\" — https://github.com/General-Instinct/InstinctFlash — 24 points, 3 comments — High-performance Rust runtime, but domain is robotics model serving, not general web backend — limited direct applicability.\n\nOverall: the discussion set is sparse and mostly tangential; there's no substantial, highly-upvoted HN thread here directly debating \"Rust for web backends\" — treat conclusions from this set as weak/unverified.\n\n4. Visual Assets\n- Architecture comparison diagram: side-by-side request-handling paths for Rust (Tokio + Axum/Actix-web), Go (net/http + goroutines), and Node.js (event loop) — show thread/task model, memory ownership, and where blocking I/O is handled, to visually ground the \"performance\" claim in mechanism rather than hype.\n- Benchmark bar chart: pull real numbers from TechEmpower Framework Benchmarks (unverified here, needs external fetch) comparing req/s and p99 latency across Rust frameworks vs Go/Java/Node for equivalent workloads (JSON serialization, DB query, plaintext).\n- Sequence diagram: a single HTTP request lifecycle in an async Rust web server (accept → task spawn → DB pool checkout → query → serialize → response) to show where actual latency accumulates — useful to counter the \"language speed\" oversimplification.\n- Learning-curve / TCO radar chart: axes for compile time, onboarding time, ecosystem library count, hiring pool size, runtime performance — plotted for Rust, Go, Java, Node — to visualize the real trade-off space instead of a binary \"good/bad\" verdict.\n- Flame graph example (from `cargo flamegraph` or `perf`): illustrate how to actually validate whether Rust's CPU efficiency matters for a given service before committing to the rewrite."
+        },
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "Extract Search Keywords",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Search Keywords": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Claude": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Technical Critique Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request2": {
+      "main": [
+        [
+          {
+            "node": "Technical Critique Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "6d2e2745-a777-4b96-b902-70daa340cee6",
+  "meta": {
+    "instanceId": "81968c00463cafe317356a3603d800516d0297f470150838a65ba5baf573a55e"
+  },
+  "nodeGroups": [],
+  "id": "lFoNgJFT4SU3gBEc",
+  "tags": []
+}
